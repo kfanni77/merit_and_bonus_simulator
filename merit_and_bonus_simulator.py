@@ -140,7 +140,7 @@ reg_columns = ['TenureYears', 'PerformanceRating'] + [
 ]
 
 # Coerce everything to numeric and drop bad rows
-X = df_encoded[reg_columns].apply(pd.to_numeric, errors='coerce')
+X = df_encoded[reg_columns].astype(float)
 X = sm.add_constant(X)
 y_before = pd.to_numeric(df_encoded['BaseSalary_Original'], errors='coerce')
 y_after = pd.to_numeric(df_encoded['BaseSalary'], errors='coerce')
