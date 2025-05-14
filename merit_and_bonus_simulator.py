@@ -49,6 +49,19 @@ df['RecommendedMeritIncrease'] = df['BaseSalary'] * df['AdjustedMeritPct']
 
 # Sidebar: set total merit budget
 MERIT_BUDGET = st.sidebar.number_input("Total Merit Budget (€)", min_value=10000, max_value=1000000, value=200000, step=10000)
+
+# Bonus slider weights
+st.sidebar.title("Bonus Allocation Weights")
+w_perf = st.sidebar.slider("Performance Weight", 0.0, 1.0, 0.5, step=0.05)
+w_team = st.sidebar.slider("Team Score Weight", 0.0, 1.0, 0.3, step=0.05)
+w_ret = st.sidebar.slider("Retention Risk Weight", 0.0, 1.0, 0.2, step=0.05)
+
+# Normalize weights
+total_weight = w_perf + w_team + w_ret
+w_perf /= total_weight
+w_team /= total_weight
+w_ret /= total_weight
+
 total_merit_recommendation = df['RecommendedMeritIncrease'].sum()
 scaling_factor = MERIT_BUDGET / total_merit_recommendation if total_merit_recommendation > 0 else 0
 
@@ -65,10 +78,10 @@ df['NormPerf'] = df['PerformanceRating'] / df['PerformanceRating'].max()
 df['NormTeam'] = df['TeamScore'] / df['TeamScore'].max()
 df['NormRisk'] = df['RetentionRisk']
 
-# Calculate system bonus recommendation
+# Calculate system bonus recommendation using dynamic slider weights
 bonus_mean = df['Bonus'].mean()
 df['SystemBonusRecommendation'] = (
-    0.5 * df['NormPerf'] + 0.3 * df['NormTeam'] + 0.2 * df['NormRisk']
+    w_perf * df['NormPerf'] + w_team * df['NormTeam'] + w_ret * df['NormRisk']
 ) * bonus_mean * 2
 df['BonusDelta_vs_System'] = df['Bonus'] - df['SystemBonusRecommendation']
 
@@ -143,7 +156,7 @@ X_after_clean = regression_data_after[X.columns]
 y_after_clean = regression_data_after[y_after.name]
 
 # Final sanity check
-assert X_before_clean.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all(), "X_before contains non-numeric values"
+assert all(np.issubdtype(dtype, np.number) for dtype in X_before_clean.dtypes), "X_before contains non-numeric values"
 assert y_before_clean.dtypes == np.float64 or y_before_clean.dtypes == np.int64, "y_before is not numeric"
 
 # Fit models
