@@ -156,7 +156,10 @@ X_after_clean = regression_data_after[X.columns]
 y_after_clean = regression_data_after[y_after.name]
 
 # Final sanity check
-assert all(np.issubdtype(dtype, np.number) for dtype in X_before_clean.dtypes), "X_before contains non-numeric values"
+non_numeric_cols = [col for col in X_before_clean.columns if not np.issubdtype(X_before_clean[col].dtype, np.number)]
+if non_numeric_cols:
+    st.error(f"❌ Non-numeric columns found in X_before_clean: {non_numeric_cols}")
+    st.stop()
 assert y_before_clean.dtypes == np.float64 or y_before_clean.dtypes == np.int64, "y_before is not numeric"
 
 # Fit models
