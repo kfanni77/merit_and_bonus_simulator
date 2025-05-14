@@ -120,15 +120,30 @@ st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%", delta=f"{una
 
 # Adjusted Gender Pay Gap via OLS regression
 df_encoded_before = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
-X_before = df_encoded_before[['TenureYears', 'PerformanceRating'] + [col for col in df_encoded_before.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')]]
+
+reg_columns = ['TenureYears', 'PerformanceRating'] + [col for col in df_encoded_before.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')]
+
+X_before = df_encoded_before[reg_columns].apply(pd.to_numeric, errors='coerce')
 X_before = sm.add_constant(X_before)
-y_before = df_encoded_before['BaseSalary_Original']
-model_before = sm.OLS(y_before, X_before).fit()
+y_before = pd.to_numeric(df_encoded_before['BaseSalary_Original'], errors='coerce')
+
+# Drop rows with NaNs
+regression_data = pd.concat([X_before, y_before], axis=1).dropna()
+X_before_clean = regression_data[X_before.columns]
+y_before_clean = regression_data[y_before.name]
+
+model_before = sm.OLS(y_before_clean, X_before_clean).fit()
+
 adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 
-X_after = sm.add_constant(X_before)
-y_after = df_encoded_before['BaseSalary']
-model_after = sm.OLS(y_after, X_after).fit()
+y_after = pd.to_numeric(df_encoded_before['BaseSalary'], errors='coerce')
+
+# Combine and clean like before
+regression_data_after = pd.concat([X_before, y_after], axis=1).dropna()
+X_after_clean = regression_data_after[X_before.columns]
+y_after_clean = regression_data_after[y_after.name]
+
+model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
 
 st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
