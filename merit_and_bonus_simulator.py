@@ -88,7 +88,7 @@ st.title("Merit & Bonus Simulation App")
 
 col1, col2 = st.columns(2)
 col1.metric("Merit Budget", f"€{MERIT_BUDGET:,.0f}")
-col2.metric("Simulated Merit Spend", f"€{df['ScaledMeritIncrease'].sum():,.0f}", delta=f"€{df['ScaledMeritIncrease'].sum() - MERIT_BUDGET:,.0f}")
+col2.metric("Simulated Merit Spend", f"€{df['RecommendedMeritIncrease'].sum():,.0f}", delta=f"€{df['RecommendedMeritIncrease'].sum() - MERIT_BUDGET:,.0f}")
 
 st.subheader("Average Scaled Merit % by Performance Rating")
 avg_pct_by_rating = df.groupby('PerformanceRating')['ScaledMeritPct'].mean().round(4).reset_index()
