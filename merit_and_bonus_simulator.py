@@ -119,31 +119,38 @@ st.metric("Unadjusted GPG (Before)", f"{unadjusted_gpg_before:.2f}%")
 st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%", delta=f"{unadjusted_gpg_after - unadjusted_gpg_before:.2f}%")
 
 # Adjusted Gender Pay Gap via OLS regression
-df_encoded_before = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
+# Adjusted Gender Pay Gap via OLS regression (robust version)
+df_encoded = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
 
-reg_columns = ['TenureYears', 'PerformanceRating'] + [col for col in df_encoded_before.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')]
+reg_columns = ['TenureYears', 'PerformanceRating'] + [
+    col for col in df_encoded.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')
+]
 
-X_before = df_encoded_before[reg_columns].apply(pd.to_numeric, errors='coerce')
-X_before = sm.add_constant(X_before)
-y_before = pd.to_numeric(df_encoded_before['BaseSalary_Original'], errors='coerce')
+# Coerce everything to numeric and drop bad rows
+X = df_encoded[reg_columns].apply(pd.to_numeric, errors='coerce')
+X = sm.add_constant(X)
+y_before = pd.to_numeric(df_encoded['BaseSalary_Original'], errors='coerce')
+y_after = pd.to_numeric(df_encoded['BaseSalary'], errors='coerce')
 
-# Drop rows with NaNs
-regression_data = pd.concat([X_before, y_before], axis=1).dropna()
-X_before_clean = regression_data[X_before.columns]
-y_before_clean = regression_data[y_before.name]
+# Combine and clean data
+regression_data_before = pd.concat([X, y_before], axis=1).dropna()
+regression_data_after = pd.concat([X, y_after], axis=1).dropna()
 
-model_before = sm.OLS(y_before_clean, X_before_clean).fit()
+X_before_clean = regression_data_before[X.columns]
+y_before_clean = regression_data_before[y_before.name]
 
-adjusted_gap_before = model_before.params.get('Gender_Male', 0)
-
-y_after = pd.to_numeric(df_encoded_before['BaseSalary'], errors='coerce')
-
-# Combine and clean like before
-regression_data_after = pd.concat([X_before, y_after], axis=1).dropna()
-X_after_clean = regression_data_after[X_before.columns]
+X_after_clean = regression_data_after[X.columns]
 y_after_clean = regression_data_after[y_after.name]
 
+# Final sanity check
+assert X_before_clean.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all(), "X_before contains non-numeric values"
+assert y_before_clean.dtypes == np.float64 or y_before_clean.dtypes == np.int64, "y_before is not numeric"
+
+# Fit models
+model_before = sm.OLS(y_before_clean, X_before_clean).fit()
 model_after = sm.OLS(y_after_clean, X_after_clean).fit()
+
+adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
 
 st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
