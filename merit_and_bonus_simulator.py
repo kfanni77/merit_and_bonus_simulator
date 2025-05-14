@@ -62,14 +62,12 @@ w_perf /= total_weight
 w_team /= total_weight
 w_ret /= total_weight
 
-total_merit_recommendation = df['RecommendedMeritIncrease'].sum()
-scaling_factor = MERIT_BUDGET / total_merit_recommendation if total_merit_recommendation > 0 else 0
+# No scaling — use values based on sliders directly
+df['FinalMeritIncrease'] = df['BaseSalary'] * df['AdjustedMeritPct']
+df['FinalMeritPct'] = df['AdjustedMeritPct']
 
-df['ScaledMeritIncrease'] = df['RecommendedMeritIncrease'] * scaling_factor
-df['ScaledMeritPct'] = df['AdjustedMeritPct'] * scaling_factor
-
-# Update BaseSalary with simulated merit increases
-df['BaseSalary'] = df['BaseSalary_Original'] + df['ScaledMeritIncrease']
+# Update BaseSalary with merit increases
+df['BaseSalary'] = df['BaseSalary_Original'] + df['FinalMeritIncrease']
 
 # Bonus logic
 df['TeamScore'] = np.random.randint(1, 6, size=len(df))
@@ -129,7 +127,9 @@ unadjusted_gpg_before = ((avg_salary_gender_before['Male'] - avg_salary_gender_b
 unadjusted_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_after['Female']) / avg_salary_gender_after['Male']) * 100
 
 st.metric("Unadjusted GPG (Before)", f"{unadjusted_gpg_before:.2f}%")
-st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%", delta=f"{unadjusted_gpg_after - unadjusted_gpg_before:.2f}%")
+unadj_gpg_delta = unadjusted_gpg_after - unadjusted_gpg_before
+st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%",
+          delta=f"{unadj_gpg_delta:.2f}%", delta_color="inverse")
 
 # Adjusted Gender Pay Gap via OLS regression
 # Adjusted Gender Pay Gap via OLS regression (robust version)
@@ -170,7 +170,12 @@ adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
 
 st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
-st.metric("Adjusted GPG (After)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_after - adjusted_gap_before:.2f}")
+gpg_delta = adjusted_gap_after - adjusted_gap_before
+delta_color = "inverse"  # Makes increase show as red (bad), decrease as green (good)
+
+st.metric("Adjusted GPG (After)", f"€{adjusted_gap_after:.2f}",
+          delta=f"€{gpg_delta:.2f}", delta_color=delta_color)
+
 
 # Show Data Table
 if st.checkbox("Show Detailed Table"):
