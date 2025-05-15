@@ -169,7 +169,11 @@ model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 
 adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
-gpg_delta = adjusted_gap_after - adjusted_gap_before
+if adjusted_gap_before is not None and adjusted_gap_after is not None:
+    gpg_delta = adjusted_gap_after - adjusted_gap_before
+else:
+    st.error("⚠️ Adjusted GPG values not available. Regression may have failed.")
+    st.stop()
 
 st.write(f"Adjusted GPG Before: €{adjusted_gap_before:.2f}, After: €{adjusted_gap_after:.2f}, Delta: €{gpg_delta:.2f}")
 
