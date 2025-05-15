@@ -123,70 +123,55 @@ st.pyplot(fig2)
 st.subheader("Gender Pay Gap Impact")
 avg_salary_gender_before = df.groupby('Gender')['BaseSalary_Original'].mean()
 avg_salary_gender_after = df.groupby('Gender')['BaseSalary'].mean()
-unadjusted_gpg_before = ((avg_salary_gender_before['Male'] - avg_salary_gender_before['Female']) / avg_salary_gender_before['Male']) * 100
-unadjusted_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_after['Female']) / avg_salary_gender_after['Male']) * 100
 
-st.metric("Unadjusted GPG (Before)", f"{unadjusted_gpg_before:.2f}%")
-unadj_gpg_delta = unadjusted_gpg_after - unadjusted_gpg_before
-unadj_delta_color = "inverse" if abs(unadjusted_gpg_after) > abs(unadjusted_gpg_before) else "normal"
-st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%",
-          delta=f"{unadj_gpg_delta:+.2f}%", delta_color=unadj_delta_color)
+# Unadjusted
+unadj_gpg_before = ((avg_salary_gender_before['Male'] - avg_salary_gender_before['Female']) / avg_salary_gender_before['Male']) * 100
+unadj_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_after['Female']) / avg_salary_gender_after['Male']) * 100
+unadj_gpg_delta = unadj_gpg_after - unadj_gpg_before
+
+st.metric("Unadjusted GPG (Before, %)", f"{unadj_gpg_before:.2f}%")
+st.metric("Unadjusted GPG (After, %)", f"{unadj_gpg_after:.2f}%", delta=f"{unadj_gpg_delta:+.2f}%", delta_color="inverse")
 
 # Adjusted Gender Pay Gap via OLS regression
-# Adjusted Gender Pay Gap via OLS regression (robust version)
 df_encoded = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
-
 reg_columns = ['TenureYears', 'PerformanceRating'] + [
     col for col in df_encoded.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')
 ]
 
-# Coerce everything to numeric and drop bad rows
 X = df_encoded[reg_columns].astype(float)
 X = sm.add_constant(X)
 y_before = pd.to_numeric(df_encoded['BaseSalary_Original'], errors='coerce')
 y_after = pd.to_numeric(df_encoded['BaseSalary'], errors='coerce')
 
-# Combine and clean data
 regression_data_before = pd.concat([X, y_before], axis=1).dropna()
 regression_data_after = pd.concat([X, y_after], axis=1).dropna()
 
 X_before_clean = regression_data_before[X.columns]
 y_before_clean = regression_data_before[y_before.name]
-
 X_after_clean = regression_data_after[X.columns]
 y_after_clean = regression_data_after[y_after.name]
 
-# Final sanity check
-non_numeric_cols = [col for col in X_before_clean.columns if not np.issubdtype(X_before_clean[col].dtype, np.number)]
-if non_numeric_cols:
-    st.error(f"❌ Non-numeric columns found in X_before_clean: {non_numeric_cols}")
-    st.stop()
-assert y_before_clean.dtypes == np.float64 or y_before_clean.dtypes == np.int64, "y_before is not numeric"
-
-# Fit models
 model_before = sm.OLS(y_before_clean, X_before_clean).fit()
 model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 
 try:
     adjusted_gap_before = model_before.params['Gender_Male']
     adjusted_gap_after = model_after.params['Gender_Male']
-    gpg_delta = adjusted_gap_after - adjusted_gap_before
+    adjusted_gap_delta = adjusted_gap_after - adjusted_gap_before
+    female_avg_after = avg_salary_gender_after['Female']
+    adj_gpg_before_pct = (adjusted_gap_before / avg_salary_gender_before['Female']) * 100
+    adj_gpg_after_pct = (adjusted_gap_after / avg_salary_gender_after['Female']) * 100
+    adj_gpg_delta_pct = adj_gpg_after_pct - adj_gpg_before_pct
 except KeyError:
     st.error("⚠️ 'Gender_Male' term not found in regression. Check data encoding or inputs.")
     st.stop()
 
+# Display Adjusted GPG
+st.metric("Adjusted GPG (Before, EUR)", f"€{adjusted_gap_before:.2f}")
+st.metric("Adjusted GPG (After, EUR)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_delta:+.2f}", delta_color="inverse")
 
-st.write(f"Adjusted GPG Before: €{adjusted_gap_before:.2f}, After: €{adjusted_gap_after:.2f}, Delta: €{gpg_delta:.2f}")
-
-st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
-adj_delta_color = "inverse" if gpg_delta < 0 else "normal"
-
-st.metric("Adjusted GPG (After)", f"€{adjusted_gap_after:.2f}",
-          delta=f"€{gpg_delta:+.2f}", delta_color=adj_delta_color)
-
-female_avg_salary = df[df['Gender'] == 'Female']['BaseSalary'].mean()
-adjusted_gpg_pct = (adjusted_gap_after / female_avg_salary) * 100 if female_avg_salary > 0 else np.nan
-st.metric("Adjusted GPG (After, % of Female Avg)", f"{adjusted_gpg_pct:.2f}%")
+st.metric("Adjusted GPG (Before, %)", f"{adj_gpg_before_pct:.2f}%")
+st.metric("Adjusted GPG (After, %)", f"{adj_gpg_after_pct:.2f}%", delta=f"{adj_gpg_delta_pct:+.2f}%", delta_color="inverse")
 
 # Show Data Table
 if st.checkbox("Show Detailed Table"):
