@@ -169,10 +169,11 @@ model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 
 adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
+gpg_delta = adjusted_gap_after - adjusted_gap_before
+
 st.write(f"Adjusted GPG Before: €{adjusted_gap_before:.2f}, After: €{adjusted_gap_after:.2f}, Delta: €{gpg_delta:.2f}")
 
 st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
-gpg_delta = adjusted_gap_after - adjusted_gap_before
 adj_delta_color = "inverse" if gpg_delta < 0 else "normal"
 
 st.metric("Adjusted GPG (After)", f"€{adjusted_gap_after:.2f}",
