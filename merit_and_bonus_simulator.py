@@ -167,13 +167,14 @@ assert y_before_clean.dtypes == np.float64 or y_before_clean.dtypes == np.int64,
 model_before = sm.OLS(y_before_clean, X_before_clean).fit()
 model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 
-adjusted_gap_before = model_before.params.get('Gender_Male', 0)
-adjusted_gap_after = model_after.params.get('Gender_Male', 0)
-if adjusted_gap_before is not None and adjusted_gap_after is not None:
+try:
+    adjusted_gap_before = model_before.params['Gender_Male']
+    adjusted_gap_after = model_after.params['Gender_Male']
     gpg_delta = adjusted_gap_after - adjusted_gap_before
-else:
-    st.error("⚠️ Adjusted GPG values not available. Regression may have failed.")
+except KeyError:
+    st.error("⚠️ 'Gender_Male' term not found in regression. Check data encoding or inputs.")
     st.stop()
+
 
 st.write(f"Adjusted GPG Before: €{adjusted_gap_before:.2f}, After: €{adjusted_gap_after:.2f}, Delta: €{gpg_delta:.2f}")
 
