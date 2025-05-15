@@ -128,8 +128,9 @@ unadjusted_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_aft
 
 st.metric("Unadjusted GPG (Before)", f"{unadjusted_gpg_before:.2f}%")
 unadj_gpg_delta = unadjusted_gpg_after - unadjusted_gpg_before
+unadj_delta_color = "inverse" if abs(unadjusted_gpg_after) > abs(unadjusted_gpg_before) else "normal"
 st.metric("Unadjusted GPG (After)", f"{unadjusted_gpg_after:.2f}%",
-          delta=f"{unadj_gpg_delta:.2f}%", delta_color="inverse")
+          delta=f"{unadj_gpg_delta:+.2f}%", delta_color=unadj_delta_color)
 
 # Adjusted Gender Pay Gap via OLS regression
 # Adjusted Gender Pay Gap via OLS regression (robust version)
@@ -168,14 +169,18 @@ model_after = sm.OLS(y_after_clean, X_after_clean).fit()
 
 adjusted_gap_before = model_before.params.get('Gender_Male', 0)
 adjusted_gap_after = model_after.params.get('Gender_Male', 0)
+st.write(f"Adjusted GPG Before: €{adjusted_gap_before:.2f}, After: €{adjusted_gap_after:.2f}, Delta: €{gpg_delta:.2f}")
 
 st.metric("Adjusted GPG (Before)", f"€{adjusted_gap_before:.2f}")
 gpg_delta = adjusted_gap_after - adjusted_gap_before
-delta_color = "inverse"  # Makes increase show as red (bad), decrease as green (good)
+adj_delta_color = "inverse" if gpg_delta < 0 else "normal"
 
 st.metric("Adjusted GPG (After)", f"€{adjusted_gap_after:.2f}",
-          delta=f"€{gpg_delta:.2f}", delta_color=delta_color)
+          delta=f"€{gpg_delta:+.2f}", delta_color=adj_delta_color)
 
+female_avg_salary = df[df['Gender'] == 'Female']['BaseSalary'].mean()
+adjusted_gpg_pct = (adjusted_gap_after / female_avg_salary) * 100 if female_avg_salary > 0 else np.nan
+st.metric("Adjusted GPG (After, % of Female Avg)", f"{adjusted_gpg_pct:.2f}%")
 
 # Show Data Table
 if st.checkbox("Show Detailed Table"):
