@@ -130,7 +130,10 @@ unadj_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_after['F
 unadj_gpg_delta = unadj_gpg_after - unadj_gpg_before
 
 st.metric("Unadjusted GPG (Before, %)", f"{unadj_gpg_before:.2f}%")
-st.metric("Unadjusted GPG (After, %)", f"{unadj_gpg_after:.2f}%", delta=f"{unadj_gpg_delta:+.2f}%", delta_color="inverse")
+
+# A more negative value means a worse unadjusted GPG, so we flip the logic
+unadj_delta_color = "normal" if unadj_gpg_after > unadj_gpg_before else "inverse"
+st.metric("Unadjusted GPG (After, %)", f"{unadj_gpg_after:.2f}%", delta=f"{unadj_gpg_delta:+.2f}%", delta_color=unadj_delta_color)
 
 # Adjusted Gender Pay Gap via OLS regression
 df_encoded = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
@@ -168,10 +171,13 @@ except KeyError:
 
 # Display Adjusted GPG
 st.metric("Adjusted GPG (Before, EUR)", f"€{adjusted_gap_before:.2f}")
-st.metric("Adjusted GPG (After, EUR)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_delta:+.2f}", delta_color="inverse")
+# Lower adjusted gap = better, so if gap got smaller → green
+adj_delta_color_eur = "normal" if adjusted_gap_after < adjusted_gap_before else "inverse"
+st.metric("Adjusted GPG (After, EUR)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_delta:+.2f}", delta_color=adj_delta_color_eur)
 
 st.metric("Adjusted GPG (Before, %)", f"{adj_gpg_before_pct:.2f}%")
-st.metric("Adjusted GPG (After, %)", f"{adj_gpg_after_pct:.2f}%", delta=f"{adj_gpg_delta_pct:+.2f}%", delta_color="inverse")
+adj_delta_color_pct = "normal" if adj_gpg_after_pct < adj_gpg_before_pct else "inverse"
+st.metric("Adjusted GPG (After, %)", f"{adj_gpg_after_pct:.2f}%", delta=f"{adj_gpg_delta_pct:+.2f}%", delta_color=adj_delta_color_pct)
 
 # Show Data Table
 if st.checkbox("Show Detailed Table"):
