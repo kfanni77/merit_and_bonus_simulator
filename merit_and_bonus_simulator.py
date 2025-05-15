@@ -119,23 +119,24 @@ ax2.set_xlabel("Bonus Delta (€)")
 ax2.set_ylabel("Employee Count")
 st.pyplot(fig2)
 
-# Gender Pay Gap Calculation
+# --- Gender Pay Gap Calculation ---
 st.subheader("Gender Pay Gap Impact")
+
+# Unadjusted GPG
 avg_salary_gender_before = df.groupby('Gender')['BaseSalary_Original'].mean()
 avg_salary_gender_after = df.groupby('Gender')['BaseSalary'].mean()
 
-# Unadjusted
 unadj_gpg_before = ((avg_salary_gender_before['Male'] - avg_salary_gender_before['Female']) / avg_salary_gender_before['Male']) * 100
 unadj_gpg_after = ((avg_salary_gender_after['Male'] - avg_salary_gender_after['Female']) / avg_salary_gender_after['Male']) * 100
 unadj_gpg_delta = unadj_gpg_after - unadj_gpg_before
 
-st.metric("Unadjusted GPG (Before, %)", f"{unadj_gpg_before:.2f}%")
+# If absolute value becomes bigger (gap widened), it's red
+unadj_delta_color = "inverse" if abs(unadj_gpg_after) < abs(unadj_gpg_before) else "normal"
 
-# A more negative value means a worse unadjusted GPG, so we flip the logic
-unadj_delta_color = "normal" if unadj_gpg_after > unadj_gpg_before else "inverse"
+st.metric("Unadjusted GPG (Before, %)", f"{unadj_gpg_before:.2f}%")
 st.metric("Unadjusted GPG (After, %)", f"{unadj_gpg_after:.2f}%", delta=f"{unadj_gpg_delta:+.2f}%", delta_color=unadj_delta_color)
 
-# Adjusted Gender Pay Gap via OLS regression
+# Adjusted GPG via OLS
 df_encoded = pd.get_dummies(df.copy(), columns=['Gender', 'Level', 'Department'], drop_first=True)
 reg_columns = ['TenureYears', 'PerformanceRating'] + [
     col for col in df_encoded.columns if col.startswith('Level_') or col.startswith('Department_') or col.startswith('Gender_')
@@ -161,23 +162,23 @@ try:
     adjusted_gap_before = model_before.params['Gender_Male']
     adjusted_gap_after = model_after.params['Gender_Male']
     adjusted_gap_delta = adjusted_gap_after - adjusted_gap_before
+    female_avg_before = avg_salary_gender_before['Female']
     female_avg_after = avg_salary_gender_after['Female']
-    adj_gpg_before_pct = (adjusted_gap_before / avg_salary_gender_before['Female']) * 100
-    adj_gpg_after_pct = (adjusted_gap_after / avg_salary_gender_after['Female']) * 100
+    adj_gpg_before_pct = (adjusted_gap_before / female_avg_before) * 100
+    adj_gpg_after_pct = (adjusted_gap_after / female_avg_after) * 100
     adj_gpg_delta_pct = adj_gpg_after_pct - adj_gpg_before_pct
 except KeyError:
     st.error("⚠️ 'Gender_Male' term not found in regression. Check data encoding or inputs.")
     st.stop()
 
-# Display Adjusted GPG
+# Display adjusted GPG metrics with correct direction logic
 st.metric("Adjusted GPG (Before, EUR)", f"€{adjusted_gap_before:.2f}")
-# Lower adjusted gap = better, so if gap got smaller → green
-adj_delta_color_eur = "normal" if adjusted_gap_after < adjusted_gap_before else "inverse"
-st.metric("Adjusted GPG (After, EUR)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_delta:+.2f}", delta_color=adj_delta_color_eur)
+delta_color_eur = "normal" if adjusted_gap_after < adjusted_gap_before else "inverse"
+st.metric("Adjusted GPG (After, EUR)", f"€{adjusted_gap_after:.2f}", delta=f"€{adjusted_gap_delta:+.2f}", delta_color=delta_color_eur)
 
 st.metric("Adjusted GPG (Before, %)", f"{adj_gpg_before_pct:.2f}%")
-adj_delta_color_pct = "normal" if adj_gpg_after_pct < adj_gpg_before_pct else "inverse"
-st.metric("Adjusted GPG (After, %)", f"{adj_gpg_after_pct:.2f}%", delta=f"{adj_gpg_delta_pct:+.2f}%", delta_color=adj_delta_color_pct)
+delta_color_pct = "normal" if adj_gpg_after_pct < adj_gpg_before_pct else "inverse"
+st.metric("Adjusted GPG (After, %)", f"{adj_gpg_after_pct:.2f}%", delta=f"{adj_gpg_delta_pct:+.2f}%", delta_color=delta_color_pct)
 
 # Show Data Table
 if st.checkbox("Show Detailed Table"):
